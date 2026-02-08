@@ -1,14 +1,14 @@
 import React from 'react';
-import { LayoutDashboard, PieChart, Settings, Menu, X, Bell, Briefcase, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, PieChart, Settings, Menu, X, Bell, Briefcase, BarChart3, Eye, History, Newspaper, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-provider';
 
-const SidebarItem = ({ icon: Icon, label, active, onClick }) => (
+const SidebarItem = ({ icon: Icon, label, active, onClick, badge }) => (
     <button
         onClick={onClick}
         className={cn(
-            "flex items-center w-full px-4 py-3 text-sm font-medium transition-colors rounded-lg",
+            "flex items-center w-full px-4 py-3 text-sm font-medium transition-colors rounded-lg relative",
             active
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -16,15 +16,24 @@ const SidebarItem = ({ icon: Icon, label, active, onClick }) => (
     >
         <Icon className="w-5 h-5 mr-3" />
         {label}
+        {badge && (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {badge}
+            </span>
+        )}
     </button>
 );
 
-const Layout = ({ children, activeTab, setActiveTab }) => {
+const Layout = ({ children, activeTab, setActiveTab, alertCount = 0 }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     const navItems = [
         { id: 'dashboard', icon: LayoutDashboard, label: 'ダッシュボード' },
         { id: 'holdings', icon: Briefcase, label: '保有銘柄' },
+        { id: 'alerts', icon: Bell, label: 'アラート', badge: alertCount > 0 ? alertCount : null },
+        { id: 'watchlist', icon: Eye, label: 'ウォッチリスト' },
+        { id: 'transactions', icon: History, label: '取引履歴' },
+        { id: 'news', icon: Newspaper, label: 'ニュース' },
         { id: 'comparison', icon: BarChart3, label: '比較分析' },
         { id: 'settings', icon: Settings, label: '設定' },
     ];
@@ -56,13 +65,14 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
                     </button>
                 </div>
 
-                <div className="flex-1 py-6 px-3 space-y-1">
+                <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
                     {navItems.map((item) => (
                         <SidebarItem
                             key={item.id}
                             icon={item.icon}
                             label={item.label}
                             active={activeTab === item.id}
+                            badge={item.badge}
                             onClick={() => {
                                 setActiveTab(item.id);
                                 setIsMobileMenuOpen(false);
@@ -101,9 +111,11 @@ const Layout = ({ children, activeTab, setActiveTab }) => {
 
                     <div className="flex items-center gap-4">
                         <ThemeToggle />
-                        <Button variant="ghost" size="icon" className="relative">
+                        <Button variant="ghost" size="icon" className="relative" onClick={() => setActiveTab('alerts')}>
                             <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
+                            {alertCount > 0 && (
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                            )}
                         </Button>
                     </div>
                 </header>
