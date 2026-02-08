@@ -1,16 +1,53 @@
-# React + Vite
+# 📊 ポートフォリオ分析ダッシュボード
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+リアルタイム株価データを表示する、モダンなポートフォリオ管理アプリケーションです。
 
-Currently, two official plugins are available:
+## 🌐 デモサイト
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+**[https://maoum-cmd.github.io/portfolio-dashboard/](https://maoum-cmd.github.io/portfolio-dashboard/)**
 
-## React Compiler
+## ✨ 機能
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| 機能 | 説明 |
+|------|------|
+| 📈 **リアルタイム株価** | Yahoo Finance APIで最新の株価を取得 |
+| 💼 **保有銘柄管理** | 銘柄の追加・編集・削除（ブラウザに自動保存） |
+| 📊 **損益計算** | 取得価格と現在価格から損益を自動計算 |
+| 📁 **Excelエクスポート** | ポートフォリオデータをExcelファイルで出力 |
+| 📄 **PDFレポート** | 投資レポートをPDFで出力 |
+| 📉 **比較分析** | S&P500、VT、日経225とのパフォーマンス比較 |
+| 🌙 **ダークモード** | 目に優しいダークモード対応 |
 
-## Expanding the ESLint configuration
+## 🛠️ 技術スタック
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **フロントエンド**: React 19 + Vite
+- **スタイリング**: Tailwind CSS 4 + Shadcn UI
+- **チャート**: Recharts
+- **データ取得**: Yahoo Finance API
+- **デプロイ**: GitHub Pages
+
+## 📦 デフォルト登録銘柄
+
+- 金（ゴールド）`GC=F`
+- eMAXIS Slim S&P500 `^GSPC`
+- ヒューマナ `HUM`
+- ヒューリック `3003.T`
+- 大阪瓦斯 `9532.T`
+
+## 🚀 ローカルで実行
+
+```bash
+# クローン
+git clone https://github.com/maouM-cmd/portfolio-dashboard.git
+cd portfolio-dashboard
+
+# 依存関係インストール
+npm install
+
+# 開発サーバー起動
+npm run dev
+```
+
+## 📝 ライセンス
+
+MIT License
