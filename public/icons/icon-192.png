@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#020817"/>
+  <text x="96" y="75" font-family="Arial, sans-serif" font-size="54" font-weight="bold" fill="#8884d8" text-anchor="middle">P.ai</text>
+  <rect x="40" y="95" width="20" height="50" rx="4" fill="#82ca9d"/>
+  <rect x="68" y="80" width="20" height="65" rx="4" fill="#8884d8"/>
+  <rect x="96" y="105" width="20" height="40" rx="4" fill="#ffc658"/>
+  <rect x="124" y="70" width="20" height="75" rx="4" fill="#ff7c43"/>
+</svg>

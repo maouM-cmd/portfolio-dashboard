@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, PieChart, Settings, Menu, X, Bell, Briefcase, BarChart3, Eye, History, Newspaper, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, PieChart, Settings, Menu, X, Bell, Briefcase, BarChart3, Eye, History, Newspaper, HelpCircle, Calendar, Target, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-provider';
@@ -33,6 +33,8 @@ const Layout = ({ children, activeTab, setActiveTab, alertCount = 0 }) => {
         { id: 'alerts', icon: Bell, label: 'アラート', badge: alertCount > 0 ? alertCount : null },
         { id: 'watchlist', icon: Eye, label: 'ウォッチリスト' },
         { id: 'transactions', icon: History, label: '取引履歴' },
+        { id: 'dividends', icon: Calendar, label: '配当カレンダー' },
+        { id: 'goals', icon: Target, label: '投資目標' },
         { id: 'news', icon: Newspaper, label: 'ニュース' },
         { id: 'comparison', icon: BarChart3, label: '比較分析' },
         { id: 'settings', icon: Settings, label: '設定' },

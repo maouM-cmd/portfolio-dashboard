@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, DollarSign, RefreshCw, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, DollarSign, RefreshCw, FileSpreadsheet, FileText, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useHoldings } from '@/hooks/useHoldings';
 import { fetchMultipleQuotes, calculatePortfolioSummary, fetchHistoricalData } from '@/lib/stockApi';
 import { exportToExcel } from '@/lib/exportExcel';
 import { exportSummaryToPdf } from '@/lib/exportPdf';
+import { fetchUsdJpyRate, convertCurrency, formatCurrency } from '@/lib/currency';
 
 const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c43', '#a05195', '#665191'];
 
@@ -33,7 +34,6 @@ const StatsCard = ({ title, value, change, icon: Icon, trend, isLoading }) => (
                             <ArrowDownRight className="text-red-500 h-4 w-4 mr-1" />
                         )}
                         <span className={trend === 'up' ? 'text-green-500' : 'text-red-500'}>{change}</span>
-                        <span className="ml-1">from cost</span>
                     </p>
                 </>
             )}
@@ -48,6 +48,8 @@ const Dashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [historicalData, setHistoricalData] = useState([]);
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [displayCurrency, setDisplayCurrency] = useState('JPY');
+    const [usdJpyRate, setUsdJpyRate] = useState(150);
 
     const loadData = async () => {
         if (!isLoaded || holdings.length === 0) return;
@@ -61,12 +63,17 @@ const Dashboard = () => {
             const summary = calculatePortfolioSummary(holdings, quotesData);
             setPortfolioSummary(summary);
 
-            // Load historical data for the first holding as portfolio proxy
+            // Fetch exchange rate
+            const rate = await fetchUsdJpyRate();
+            setUsdJpyRate(rate);
+
+            // Load historical data for portfolio chart
             if (symbols.length > 0) {
                 const history = await fetchHistoricalData('^GSPC', '6mo');
                 setHistoricalData(history.map(d => ({
-                    name: d.date.slice(5), // MM-DD format
-                    value: d.close,
+                    name: d.date.slice(5),
+                    sp500: d.close,
+                    portfolio: d.close * (summary.totalValue / (history[history.length - 1]?.close || 1)),
                 })));
             }
 
@@ -79,33 +86,39 @@ const Dashboard = () => {
 
     useEffect(() => {
         loadData();
-        // Auto-refresh every 5 minutes
         const interval = setInterval(loadData, 5 * 60 * 1000);
         return () => clearInterval(interval);
     }, [isLoaded, holdings]);
 
+    // Convert all values to display currency
+    const convertValue = (value, fromCurrency) => {
+        if (!value) return 0;
+        return convertCurrency(value, fromCurrency || 'USD', displayCurrency, usdJpyRate);
+    };
+
+    const totalValueInDisplayCurrency = portfolioSummary?.holdings?.reduce((sum, h) => {
+        return sum + convertValue(h.currentValue, h.currency);
+    }, 0) || 0;
+
+    const totalCostInDisplayCurrency = portfolioSummary?.holdings?.reduce((sum, h) => {
+        return sum + convertValue(h.cost * h.quantity, h.currency);
+    }, 0) || 0;
+
+    const totalPnlInDisplayCurrency = totalValueInDisplayCurrency - totalCostInDisplayCurrency;
+    const totalPnlPercent = totalCostInDisplayCurrency > 0 ? (totalPnlInDisplayCurrency / totalCostInDisplayCurrency * 100) : 0;
+
     const allocationData = portfolioSummary?.holdings?.map((h, i) => ({
         name: h.name,
-        value: h.currentValue || 0,
+        value: convertValue(h.currentValue, h.currency),
         color: CHART_COLORS[i % CHART_COLORS.length],
     })) || [];
 
     const handleExportExcel = () => {
-        if (portfolioSummary) {
-            exportToExcel(portfolioSummary);
-        }
+        if (portfolioSummary) exportToExcel(portfolioSummary);
     };
 
     const handleExportPdf = () => {
-        if (portfolioSummary) {
-            exportSummaryToPdf(portfolioSummary);
-        }
-    };
-
-    const formatCurrency = (value, currency = 'USD') => {
-        if (value === undefined || value === null) return 'N/A';
-        const symbol = currency === 'JPY' ? '¥' : '$';
-        return `${symbol}${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+        if (portfolioSummary) exportSummaryToPdf(portfolioSummary);
     };
 
     return (
@@ -114,13 +127,26 @@ const Dashboard = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold">ポートフォリオダッシュボード</h1>
-                    {lastUpdated && (
-                        <p className="text-sm text-muted-foreground">
-                            最終更新: {lastUpdated.toLocaleTimeString('ja-JP')}
-                        </p>
-                    )}
+                    <div className="flex items-center gap-3 mt-1">
+                        {lastUpdated && (
+                            <p className="text-sm text-muted-foreground">
+                                最終更新: {lastUpdated.toLocaleTimeString('ja-JP')}
+                            </p>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                            USD/JPY: ¥{usdJpyRate.toFixed(2)}
+                        </span>
+                    </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
+                    {/* Currency Toggle */}
+                    <Button
+                        variant="outline" size="sm"
+                        onClick={() => setDisplayCurrency(prev => prev === 'JPY' ? 'USD' : 'JPY')}
+                    >
+                        <Globe className="w-4 h-4 mr-1" />
+                        {displayCurrency}
+                    </Button>
                     <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
                         <RefreshCw className={cn("w-4 h-4 mr-1", isLoading && "animate-spin")} />
                         更新
@@ -140,23 +166,23 @@ const Dashboard = () => {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatsCard
                     title="総資産価値"
-                    value={formatCurrency(portfolioSummary?.totalValue)}
-                    change={`${portfolioSummary?.totalPnlPercent?.toFixed(2) || 0}%`}
-                    trend={portfolioSummary?.totalPnl >= 0 ? 'up' : 'down'}
+                    value={formatCurrency(totalValueInDisplayCurrency, displayCurrency)}
+                    change={`${totalPnlPercent.toFixed(2)}%`}
+                    trend={totalPnlInDisplayCurrency >= 0 ? 'up' : 'down'}
                     icon={Wallet}
                     isLoading={isLoading}
                 />
                 <StatsCard
                     title="総損益"
-                    value={formatCurrency(portfolioSummary?.totalPnl)}
-                    change={`${portfolioSummary?.totalPnlPercent?.toFixed(2) || 0}%`}
-                    trend={portfolioSummary?.totalPnl >= 0 ? 'up' : 'down'}
+                    value={formatCurrency(totalPnlInDisplayCurrency, displayCurrency)}
+                    change={`${totalPnlPercent.toFixed(2)}%`}
+                    trend={totalPnlInDisplayCurrency >= 0 ? 'up' : 'down'}
                     icon={TrendingUp}
                     isLoading={isLoading}
                 />
                 <StatsCard
                     title="総取得コスト"
-                    value={formatCurrency(portfolioSummary?.totalCost)}
+                    value={formatCurrency(totalCostInDisplayCurrency, displayCurrency)}
                     change="basis"
                     trend="up"
                     icon={DollarSign}
@@ -165,7 +191,7 @@ const Dashboard = () => {
                 <StatsCard
                     title="保有銘柄数"
                     value={holdings.length.toString()}
-                    change={`${holdings.length} assets`}
+                    change={`${holdings.length} 銘柄`}
                     trend="up"
                     icon={PieChart}
                     isLoading={isLoading}
@@ -176,8 +202,8 @@ const Dashboard = () => {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                 <Card className="col-span-4">
                     <CardHeader>
-                        <CardTitle>市場パフォーマンス (S&P 500)</CardTitle>
-                        <CardDescription>過去6ヶ月の推移</CardDescription>
+                        <CardTitle>ポートフォリオ推移</CardTitle>
+                        <CardDescription>S&P 500 vs ポートフォリオ（過去6ヶ月）</CardDescription>
                     </CardHeader>
                     <CardContent className="pl-2">
                         {isLoading ? (
@@ -186,22 +212,25 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             <ResponsiveContainer width="100%" height={300}>
-                                <AreaChart data={historicalData}>
+                                <LineChart data={historicalData}>
                                     <defs>
-                                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-                                            <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                                        <linearGradient id="colorPortfolio" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+                                    <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false}
+                                        tickFormatter={(v) => displayCurrency === 'JPY' ? `¥${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`} />
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)' }}
                                         itemStyle={{ color: 'hsl(var(--foreground))' }}
                                     />
-                                    <Area type="monotone" dataKey="value" stroke="#8884d8" fillOpacity={1} fill="url(#colorValue)" />
-                                </AreaChart>
+                                    <Legend />
+                                    <Line type="monotone" dataKey="sp500" stroke="#8884d8" name="S&P 500" dot={false} strokeWidth={2} />
+                                    <Line type="monotone" dataKey="portfolio" stroke="#82ca9d" name="ポートフォリオ" dot={false} strokeWidth={2} />
+                                </LineChart>
                             </ResponsiveContainer>
                         )}
                     </CardContent>
@@ -210,7 +239,7 @@ const Dashboard = () => {
                 <Card className="col-span-3">
                     <CardHeader>
                         <CardTitle>資産配分</CardTitle>
-                        <CardDescription>現在のポートフォリオ構成</CardDescription>
+                        <CardDescription>現在のポートフォリオ構成（{displayCurrency}換算）</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (
@@ -228,7 +257,7 @@ const Dashboard = () => {
                                         </Pie>
                                         <Tooltip
                                             contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: 'var(--radius)' }}
-                                            formatter={(value) => formatCurrency(value)}
+                                            formatter={(value) => formatCurrency(value, displayCurrency)}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>
@@ -250,7 +279,7 @@ const Dashboard = () => {
             <Card>
                 <CardHeader>
                     <CardTitle>保有銘柄明細</CardTitle>
-                    <CardDescription>リアルタイム株価情報</CardDescription>
+                    <CardDescription>リアルタイム株価情報（{displayCurrency}換算）</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
@@ -271,41 +300,46 @@ const Dashboard = () => {
                                 </div>
                             ))
                         ) : (
-                            portfolioSummary?.holdings?.map((holding) => (
-                                <div
-                                    key={holding.id}
-                                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className={cn(
-                                            "w-10 h-10 rounded-full flex items-center justify-center font-bold",
-                                            holding.pnl >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                                                'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                                        )}>
-                                            {holding.name?.[0]}
+                            portfolioSummary?.holdings?.map((holding) => {
+                                const displayValue = convertValue(holding.currentValue, holding.currency);
+                                const displayPrice = convertValue(holding.currentPrice, holding.currency);
+                                const displayPnl = convertValue(holding.pnl, holding.currency);
+                                return (
+                                    <div
+                                        key={holding.id}
+                                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-full flex items-center justify-center font-bold",
+                                                holding.pnl >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                                                    'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                                            )}>
+                                                {holding.name?.[0]}
+                                            </div>
+                                            <div>
+                                                <p className="font-medium">{holding.name}</p>
+                                                <p className="text-sm text-muted-foreground">{holding.symbol}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-medium">{holding.name}</p>
-                                            <p className="text-sm text-muted-foreground">{holding.symbol}</p>
+                                        <div className="text-center">
+                                            <p className="font-medium">{holding.quantity} 株</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                @ {formatCurrency(displayPrice, displayCurrency)}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-medium">{formatCurrency(displayValue, displayCurrency)}</p>
+                                            <p className={cn(
+                                                "text-sm",
+                                                holding.pnl >= 0 ? 'text-green-600' : 'text-red-600'
+                                            )}>
+                                                {holding.pnl >= 0 ? '+' : ''}{formatCurrency(displayPnl, displayCurrency)} ({holding.pnlPercent?.toFixed(2)}%)
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="text-center">
-                                        <p className="font-medium">{holding.quantity} 株</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            @ {formatCurrency(holding.currentPrice, holding.currency)}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-medium">{formatCurrency(holding.currentValue, holding.currency)}</p>
-                                        <p className={cn(
-                                            "text-sm",
-                                            holding.pnl >= 0 ? 'text-green-600' : 'text-red-600'
-                                        )}>
-                                            {holding.pnl >= 0 ? '+' : ''}{formatCurrency(holding.pnl, holding.currency)} ({holding.pnlPercent?.toFixed(2)}%)
-                                        </p>
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </CardContent>

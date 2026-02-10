@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from "@/components/theme-provider"
 import { ToastProvider } from "@/components/ui/toast"
@@ -11,8 +11,13 @@ import Alerts from "@/pages/Alerts"
 import Watchlist from "@/pages/Watchlist"
 import Transactions from "@/pages/Transactions"
 import News from "@/pages/News"
+import Dividends from "@/pages/Dividends"
+import Goals from "@/pages/Goals"
 import { useAlerts } from '@/hooks/useAlerts';
+import { useHoldings } from '@/hooks/useHoldings';
 import { TermList } from '@/components/Tooltip';
+import { fetchMultipleQuotes, calculatePortfolioSummary } from '@/lib/stockApi';
+import { fetchUsdJpyRate, convertCurrency } from '@/lib/currency';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,8 +32,29 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { showOnboarding, completeOnboarding, resetOnboarding } = useOnboarding();
   const { alerts } = useAlerts();
+  const { holdings } = useHoldings();
+  const [portfolioValueJPY, setPortfolioValueJPY] = useState(0);
 
   const activeAlertCount = alerts.filter(a => !a.triggered).length;
+
+  // Calculate total portfolio value for Goals page
+  useEffect(() => {
+    const calcValue = async () => {
+      if (holdings.length === 0) return;
+      try {
+        const symbols = holdings.map(h => h.symbol);
+        const quotes = await fetchMultipleQuotes(symbols);
+        const summary = calculatePortfolioSummary(holdings, quotes);
+        const rate = await fetchUsdJpyRate();
+        const total = summary.holdings.reduce((sum, h) => {
+          const val = h.currentValue || 0;
+          return sum + (h.currency === 'USD' ? val * rate : val);
+        }, 0);
+        setPortfolioValueJPY(total);
+      } catch (e) { console.error(e); }
+    };
+    calcValue();
+  }, [holdings]);
 
   const renderPage = () => {
     switch (activeTab) {
@@ -42,6 +68,10 @@ function AppContent() {
         return <Watchlist />;
       case 'transactions':
         return <Transactions />;
+      case 'dividends':
+        return <Dividends />;
+      case 'goals':
+        return <Goals portfolioValue={portfolioValueJPY} />;
       case 'news':
         return <News />;
       case 'comparison':
