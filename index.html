@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/portfolio-dashboard/vite.svg" />
+  <link rel="icon" type="image/svg+xml" href="./vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="投資ポートフォリオの分析・管理ダッシュボード。為替変換、配当追跡、目標管理機能搭載。" />
   <meta name="theme-color" content="#020817" />
@@ -12,20 +12,23 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Portfolio.ai" />
   <title>ポートフォリオ分析ダッシュボード</title>
-  <script type="module" crossorigin src="/portfolio-dashboard/assets/index-C4eAKV6O.js"></script>
-  <link rel="stylesheet" crossorigin href="/portfolio-dashboard/assets/index-CpFd5OEG.css">
+  <script type="module" crossorigin src="./assets/index-CLk7o2WD.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CpFd5OEG.css">
 </head>
 
 <body>
   <div id="root"></div>
   <script>
+    // Force re-register the self-destructing service worker to clear old caches
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/portfolio-dashboard/sw.js')
-          .catch(err => console.log('SW registration failed:', err));
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
       });
     }
   </script>
+
 </body>
 
 </html>
