@@ -8,6 +8,7 @@ import { fetchMultipleQuotes, calculatePortfolioSummary } from '@/lib/stockApi';
 import { calculateCapitalGainsTax, calculateUnrealizedGains, generateTaxSummary } from '@/lib/taxCalculation';
 import { fetchUsdJpyRate, convertCurrency, formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
+import { HelpTip } from '@/components/HelpTooltip';
 
 const TaxCalculator = () => {
     const { holdings, isLoaded } = useHoldings();
@@ -50,9 +51,9 @@ const TaxCalculator = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
-                        <Calculator className="w-6 h-6" /> 税金計算
+                        <Calculator className="w-6 h-6" /> 税金計算<HelpTip termKey="taxRate" />
                     </h1>
-                    <p className="text-muted-foreground">確定申告用・投資損益と税額の計算</p>
+                    <p className="text-muted-foreground">株を売ったときにかかる税金の目安を確認できます</p>
                 </div>
                 <select
                     value={selectedYear}
@@ -76,7 +77,7 @@ const TaxCalculator = () => {
             <div className="grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">含み益</CardTitle>
+                        <CardTitle className="text-sm font-medium">含み益<HelpTip termKey="unrealizedGain" /></CardTitle>
                         <TrendingUp className="h-4 w-4 text-green-500" />
                     </CardHeader>
                     <CardContent>
@@ -87,7 +88,7 @@ const TaxCalculator = () => {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">含み損</CardTitle>
+                        <CardTitle className="text-sm font-medium">含み損<HelpTip termKey="unrealizedLoss" /></CardTitle>
                         <TrendingDown className="h-4 w-4 text-red-500" />
                     </CardHeader>
                     <CardContent>

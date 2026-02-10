@@ -9,6 +9,7 @@ import { fetchMultipleQuotes, calculatePortfolioSummary, fetchHistoricalData } f
 import { exportToExcel } from '@/lib/exportExcel';
 import { exportSummaryToPdf } from '@/lib/exportPdf';
 import { fetchUsdJpyRate, convertCurrency, formatCurrency } from '@/lib/currency';
+import { HelpTip } from '@/components/HelpTooltip';
 
 const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c43', '#a05195', '#665191'];
 
@@ -165,7 +166,7 @@ const Dashboard = () => {
             {/* Stats Row */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatsCard
-                    title="総資産価値"
+                    title={<>総資産価値<HelpTip termKey="totalValue" /></>}
                     value={formatCurrency(totalValueInDisplayCurrency, displayCurrency)}
                     change={`${totalPnlPercent.toFixed(2)}%`}
                     trend={totalPnlInDisplayCurrency >= 0 ? 'up' : 'down'}
@@ -173,7 +174,7 @@ const Dashboard = () => {
                     isLoading={isLoading}
                 />
                 <StatsCard
-                    title="総損益"
+                    title={<>総損益<HelpTip termKey="totalPnl" /></>}
                     value={formatCurrency(totalPnlInDisplayCurrency, displayCurrency)}
                     change={`${totalPnlPercent.toFixed(2)}%`}
                     trend={totalPnlInDisplayCurrency >= 0 ? 'up' : 'down'}
@@ -181,7 +182,7 @@ const Dashboard = () => {
                     isLoading={isLoading}
                 />
                 <StatsCard
-                    title="総取得コスト"
+                    title={<>総取得コスト<HelpTip termKey="totalCost" /></>}
                     value={formatCurrency(totalCostInDisplayCurrency, displayCurrency)}
                     change="basis"
                     trend="up"
@@ -203,7 +204,7 @@ const Dashboard = () => {
                 <Card className="col-span-4">
                     <CardHeader>
                         <CardTitle>ポートフォリオ推移</CardTitle>
-                        <CardDescription>S&P 500 vs ポートフォリオ（過去6ヶ月）</CardDescription>
+                        <CardDescription>S&P 500（米国株指数）との比較。右肩上がりなら好調です📈</CardDescription>
                     </CardHeader>
                     <CardContent className="pl-2">
                         {isLoading ? (
@@ -238,8 +239,8 @@ const Dashboard = () => {
 
                 <Card className="col-span-3">
                     <CardHeader>
-                        <CardTitle>資産配分</CardTitle>
-                        <CardDescription>現在のポートフォリオ構成（{displayCurrency}換算）</CardDescription>
+                        <CardTitle>資産配分<HelpTip termKey="allocation" /></CardTitle>
+                        <CardDescription>お金がどの銘柄に分かれているか（{displayCurrency}換算）</CardDescription>
                     </CardHeader>
                     <CardContent>
                         {isLoading ? (

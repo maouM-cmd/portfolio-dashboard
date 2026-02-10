@@ -8,6 +8,7 @@ import { fetchMultipleQuotes, calculatePortfolioSummary } from '@/lib/stockApi';
 import { groupBySector, calculateRebalance, generatePortfolioAnalysis, SECTOR_COLORS } from '@/lib/sectorAnalysis';
 import { fetchUsdJpyRate, convertCurrency, formatCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
+import { HelpTip } from '@/components/HelpTooltip';
 
 const DEFAULT_TARGET = {
     'テクノロジー': 25,
@@ -73,8 +74,9 @@ const SectorAnalysis = () => {
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold flex items-center gap-2">
-                <BarChart3 className="w-6 h-6" /> セクター分析
+                <BarChart3 className="w-6 h-6" /> セクター分析<HelpTip termKey="sector" />
             </h1>
+            <p className="text-muted-foreground text-sm">銘柄を業種ごとにグループ分けして、お金の偏りがないかチェックしましょう</p>
 
             {/* Sector Pie Chart */}
             <div className="grid gap-4 md:grid-cols-2">
@@ -123,8 +125,8 @@ const SectorAnalysis = () => {
             {/* Rebalance Suggestions */}
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" /> リバランス提案</CardTitle>
-                    <CardDescription>目標配分と現状の乖離</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><TrendingUp className="w-5 h-5" /> リバランス提案<HelpTip termKey="rebalance" /></CardTitle>
+                    <CardDescription>目標の配分と今の状態のズレ。緑の「買い増し」は足りないセクター、赤の「売却検討」は多すぎるセクターです</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-3">
@@ -160,7 +162,7 @@ const SectorAnalysis = () => {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Brain className="w-5 h-5" /> AI ポートフォリオ分析</CardTitle>
-                        <CardDescription>ルールベースAIによる自動分析</CardDescription>
+                        <CardDescription>あなたのポートフォリオをAIが自動でチェックして、改善点をアドバイスします</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {analysis.warnings.length > 0 && (

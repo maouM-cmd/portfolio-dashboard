@@ -18,9 +18,11 @@ import TaxCalculator from "@/pages/TaxCalculator"
 import { useAlerts } from '@/hooks/useAlerts';
 import { useHoldings } from '@/hooks/useHoldings';
 import { TermList } from '@/components/Tooltip';
+import { WelcomeGuide } from '@/components/HelpTooltip';
 import { fetchMultipleQuotes, calculatePortfolioSummary } from '@/lib/stockApi';
 import { fetchUsdJpyRate } from '@/lib/currency';
 import { parseCSV, autoDetectColumns, convertToHoldings, generateSampleCSV } from '@/lib/csvImport';
+import { exportBackup, importBackup } from '@/lib/backup';
 import { getLanguage, toggleLanguage } from '@/lib/i18n';
 import toast from 'react-hot-toast';
 
@@ -127,7 +129,40 @@ function AppContent() {
     window.location.reload();
   };
 
+  // Backup handlers
+  const handleBackup = () => {
+    exportBackup();
+    toast.success('バックアップをダウンロードしました');
+  };
+
+  const handleRestore = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = importBackup(event.target.result);
+      if (result.success) {
+        toast.success(`${result.restored}項目を復元しました。リロードします...`);
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        toast.error(result.error);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   const renderPage = () => {
+    // Show welcome guide if no holdings on dashboard
+    if (activeTab === 'dashboard' && holdings.length === 0) {
+      return (
+        <WelcomeGuide
+          onAddStock={() => setActiveTab('holdings')}
+          onImportCSV={handleCSVImport}
+        />
+      );
+    }
+
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
       case 'holdings': return <Holdings />;
@@ -146,13 +181,15 @@ function AppContent() {
             <h2 className="text-2xl font-bold">設定</h2>
             <div className="grid gap-6 md:grid-cols-2">
               <div className="p-6 border rounded-lg">
-                <h3 className="font-medium mb-4">オンボーディング</h3>
-                <button onClick={resetOnboarding} className="text-primary hover:underline">
+                <h3 className="font-medium mb-4">📚 オンボーディング</h3>
+                <p className="text-sm text-muted-foreground mb-3">初回チュートリアルをもう一度見る</p>
+                <button onClick={resetOnboarding} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm">
                   チュートリアルを再表示
                 </button>
               </div>
               <div className="p-6 border rounded-lg">
                 <h3 className="font-medium mb-4">🌐 言語 / Language</h3>
+                <p className="text-sm text-muted-foreground mb-3">表示言語を切り替え</p>
                 <button
                   onClick={handleToggleLang}
                   className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
@@ -163,7 +200,7 @@ function AppContent() {
               <div className="p-6 border rounded-lg">
                 <h3 className="font-medium mb-4">🔔 ブラウザ通知</h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  株価アラートが発動した際にブラウザ通知を受け取れます
+                  株価アラートが発動した際にブラウザ通知でお知らせ
                 </p>
                 <button onClick={enableNotifications} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm">
                   通知を有効にする
@@ -172,7 +209,7 @@ function AppContent() {
               <div className="p-6 border rounded-lg">
                 <h3 className="font-medium mb-4">📂 CSVインポート</h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  証券会社のCSVから保有銘柄を一括インポート
+                  証券会社のCSVから保有銘柄を一括取り込み
                 </p>
                 <div className="flex gap-2">
                   <label className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm cursor-pointer">
@@ -180,11 +217,28 @@ function AppContent() {
                     <input type="file" accept=".csv,.tsv,.txt" onChange={handleCSVImport} className="hidden" />
                   </label>
                   <button onClick={downloadSampleCSV} className="px-4 py-2 border rounded-md text-sm hover:bg-muted">
-                    サンプルCSV
+                    サンプル
                   </button>
                 </div>
               </div>
               <div className="p-6 border rounded-lg">
+                <h3 className="font-medium mb-4">💾 バックアップ / 復元</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  全データをJSONファイルに書き出し、または復元
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={handleBackup} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm">
+                    バックアップ
+                  </button>
+                  <label className="px-4 py-2 border rounded-md text-sm cursor-pointer hover:bg-muted">
+                    復元
+                    <input type="file" accept=".json" onChange={handleRestore} className="hidden" />
+                  </label>
+                </div>
+              </div>
+              <div className="p-6 border rounded-lg">
+                <h3 className="font-medium mb-4">📖 用語集</h3>
+                <p className="text-sm text-muted-foreground mb-3">投資でよく使う用語の解説</p>
                 <TermList />
               </div>
             </div>
