@@ -11,35 +11,45 @@ import { exportSummaryToPdf } from '@/lib/exportPdf';
 import { fetchUsdJpyRate, convertCurrency, formatCurrency } from '@/lib/currency';
 import { HelpTip } from '@/components/HelpTooltip';
 
-const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c43', '#a05195', '#665191'];
+const CHART_COLORS = ['#8b5cf6', '#06d6a0', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
 
-const StatsCard = ({ title, value, change, icon: Icon, trend, isLoading }) => (
-    <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{title}</CardTitle>
-            <Icon className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-            {isLoading ? (
-                <div className="animate-pulse">
-                    <div className="h-8 bg-muted rounded w-24 mb-1" />
-                    <div className="h-4 bg-muted rounded w-32" />
-                </div>
-            ) : (
-                <>
-                    <div className="text-2xl font-bold">{value}</div>
-                    <p className="text-xs text-muted-foreground flex items-center mt-1">
-                        {trend === 'up' ? (
-                            <ArrowUpRight className="text-green-500 h-4 w-4 mr-1" />
-                        ) : (
-                            <ArrowDownRight className="text-red-500 h-4 w-4 mr-1" />
-                        )}
-                        <span className={trend === 'up' ? 'text-green-500' : 'text-red-500'}>{change}</span>
-                    </p>
-                </>
-            )}
-        </CardContent>
-    </Card>
+const StatsCard = ({ title, value, change, icon: Icon, trend, isLoading, gradient = 'purple', animDelay = '' }) => (
+    <div className={`rounded-xl p-5 stats-gradient-${gradient} card-hover ${animDelay}`}>
+        <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-muted-foreground">{title}</span>
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${gradient === 'green' ? 'bg-[hsl(152,69%,47%)]/20' :
+                    gradient === 'red' ? 'bg-[hsl(0,84%,60%)]/20' :
+                        gradient === 'blue' ? 'bg-[hsl(210,100%,65%)]/20' :
+                            gradient === 'amber' ? 'bg-[hsl(38,92%,60%)]/20' :
+                                'bg-[hsl(263,70%,58%)]/20'
+                }`}>
+                <Icon className={`h-4.5 w-4.5 ${gradient === 'green' ? 'text-[hsl(152,69%,47%)]' :
+                        gradient === 'red' ? 'text-[hsl(0,84%,60%)]' :
+                            gradient === 'blue' ? 'text-[hsl(210,100%,65%)]' :
+                                gradient === 'amber' ? 'text-[hsl(38,92%,60%)]' :
+                                    'text-[hsl(263,70%,58%)]'
+                    }`} />
+            </div>
+        </div>
+        {isLoading ? (
+            <div>
+                <div className="h-8 rounded w-28 mb-1 shimmer-loading" />
+                <div className="h-4 rounded w-20 shimmer-loading" />
+            </div>
+        ) : (
+            <>
+                <div className="text-2xl font-bold number-value">{value}</div>
+                <p className="text-xs mt-1 flex items-center">
+                    {trend === 'up' ? (
+                        <ArrowUpRight className="text-[hsl(152,69%,47%)] h-3.5 w-3.5 mr-1" />
+                    ) : (
+                        <ArrowDownRight className="text-[hsl(0,84%,60%)] h-3.5 w-3.5 mr-1" />
+                    )}
+                    <span className={trend === 'up' ? 'text-[hsl(152,69%,47%)]' : 'text-[hsl(0,84%,60%)]'}>{change}</span>
+                </p>
+            </>
+        )}
+    </div>
 );
 
 const Dashboard = () => {
@@ -125,38 +135,38 @@ const Dashboard = () => {
     return (
         <div id="dashboard-content" className="space-y-6">
             {/* Header with actions */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold">ポートフォリオダッシュボード</h1>
+                    <h1 className="text-2xl font-bold gradient-text">ポートフォリオダッシュボード</h1>
                     <div className="flex items-center gap-3 mt-1">
                         {lastUpdated && (
                             <p className="text-sm text-muted-foreground">
                                 最終更新: {lastUpdated.toLocaleTimeString('ja-JP')}
                             </p>
                         )}
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted">
                             USD/JPY: ¥{usdJpyRate.toFixed(2)}
                         </span>
                     </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                    {/* Currency Toggle */}
                     <Button
                         variant="outline" size="sm"
                         onClick={() => setDisplayCurrency(prev => prev === 'JPY' ? 'USD' : 'JPY')}
+                        className="border-border/50 hover:border-[hsl(263,70%,58%)]/50"
                     >
                         <Globe className="w-4 h-4 mr-1" />
                         {displayCurrency}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
+                    <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading} className="border-border/50">
                         <RefreshCw className={cn("w-4 h-4 mr-1", isLoading && "animate-spin")} />
                         更新
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!portfolioSummary}>
+                    <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={!portfolioSummary} className="border-border/50">
                         <FileSpreadsheet className="w-4 h-4 mr-1" />
                         Excel
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={!portfolioSummary}>
+                    <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={!portfolioSummary} className="border-border/50">
                         <FileText className="w-4 h-4 mr-1" />
                         PDF
                     </Button>
@@ -172,6 +182,8 @@ const Dashboard = () => {
                     trend={totalPnlInDisplayCurrency >= 0 ? 'up' : 'down'}
                     icon={Wallet}
                     isLoading={isLoading}
+                    gradient="purple"
+                    animDelay="animate-fade-in-up-1"
                 />
                 <StatsCard
                     title={<>総損益<HelpTip termKey="totalPnl" /></>}
@@ -180,6 +192,8 @@ const Dashboard = () => {
                     trend={totalPnlInDisplayCurrency >= 0 ? 'up' : 'down'}
                     icon={TrendingUp}
                     isLoading={isLoading}
+                    gradient={totalPnlInDisplayCurrency >= 0 ? 'green' : 'red'}
+                    animDelay="animate-fade-in-up-2"
                 />
                 <StatsCard
                     title={<>総取得コスト<HelpTip termKey="totalCost" /></>}
@@ -188,6 +202,8 @@ const Dashboard = () => {
                     trend="up"
                     icon={DollarSign}
                     isLoading={isLoading}
+                    gradient="blue"
+                    animDelay="animate-fade-in-up-3"
                 />
                 <StatsCard
                     title="保有銘柄数"
@@ -196,6 +212,8 @@ const Dashboard = () => {
                     trend="up"
                     icon={PieChart}
                     isLoading={isLoading}
+                    gradient="amber"
+                    animDelay="animate-fade-in-up-4"
                 />
             </div>
 
