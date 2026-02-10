@@ -13,16 +13,21 @@ import Transactions from "@/pages/Transactions"
 import News from "@/pages/News"
 import Dividends from "@/pages/Dividends"
 import Goals from "@/pages/Goals"
+import SectorAnalysis from "@/pages/SectorAnalysis"
+import TaxCalculator from "@/pages/TaxCalculator"
 import { useAlerts } from '@/hooks/useAlerts';
 import { useHoldings } from '@/hooks/useHoldings';
 import { TermList } from '@/components/Tooltip';
 import { fetchMultipleQuotes, calculatePortfolioSummary } from '@/lib/stockApi';
-import { fetchUsdJpyRate, convertCurrency } from '@/lib/currency';
+import { fetchUsdJpyRate } from '@/lib/currency';
+import { parseCSV, autoDetectColumns, convertToHoldings, generateSampleCSV } from '@/lib/csvImport';
+import { getLanguage, toggleLanguage } from '@/lib/i18n';
+import toast from 'react-hot-toast';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
     },
   },
@@ -32,12 +37,12 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { showOnboarding, completeOnboarding, resetOnboarding } = useOnboarding();
   const { alerts } = useAlerts();
-  const { holdings } = useHoldings();
+  const { holdings, addHolding } = useHoldings();
   const [portfolioValueJPY, setPortfolioValueJPY] = useState(0);
+  const [lang, setLang] = useState(getLanguage());
 
   const activeAlertCount = alerts.filter(a => !a.triggered).length;
 
-  // Calculate total portfolio value for Goals page
   useEffect(() => {
     const calcValue = async () => {
       if (holdings.length === 0) return;
@@ -56,26 +61,85 @@ function AppContent() {
     calcValue();
   }, [holdings]);
 
+  // Browser notification handler
+  const enableNotifications = async () => {
+    if (!('Notification' in window)) {
+      toast.error('このブラウザは通知に対応していません');
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      toast.success('通知が有効になりました！');
+      new Notification('Portfolio.ai', { body: '通知テスト成功！アラートが発動すると通知されます。' });
+    } else {
+      toast.error('通知が拒否されました');
+    }
+  };
+
+  // CSV import handler
+  const handleCSVImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const { headers, rows, error } = parseCSV(event.target.result);
+        if (error) { toast.error(error); return; }
+
+        const mapping = autoDetectColumns(headers);
+        const { holdings: imported, errors } = convertToHoldings(rows, mapping);
+
+        if (errors.length > 0) {
+          toast.error(`${errors.length}件のエラー: ${errors[0]}`);
+        }
+
+        let count = 0;
+        for (const h of imported) {
+          addHolding(h);
+          count++;
+        }
+        toast.success(`${count}件の銘柄をインポートしました`);
+      } catch (err) {
+        toast.error('CSVの読み込みに失敗しました');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Download sample CSV
+  const downloadSampleCSV = () => {
+    const csv = generateSampleCSV();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sample_holdings.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleToggleLang = () => {
+    const next = toggleLanguage();
+    setLang(next);
+    toast.success(next === 'en' ? 'Switched to English' : '日本語に切り替えました');
+    window.location.reload();
+  };
+
   const renderPage = () => {
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'holdings':
-        return <Holdings />;
-      case 'alerts':
-        return <Alerts />;
-      case 'watchlist':
-        return <Watchlist />;
-      case 'transactions':
-        return <Transactions />;
-      case 'dividends':
-        return <Dividends />;
-      case 'goals':
-        return <Goals portfolioValue={portfolioValueJPY} />;
-      case 'news':
-        return <News />;
-      case 'comparison':
-        return <Comparison />;
+      case 'dashboard': return <Dashboard />;
+      case 'holdings': return <Holdings />;
+      case 'alerts': return <Alerts />;
+      case 'watchlist': return <Watchlist />;
+      case 'transactions': return <Transactions />;
+      case 'dividends': return <Dividends />;
+      case 'goals': return <Goals portfolioValue={portfolioValueJPY} />;
+      case 'sectors': return <SectorAnalysis />;
+      case 'tax': return <TaxCalculator />;
+      case 'news': return <News />;
+      case 'comparison': return <Comparison />;
       case 'settings':
         return (
           <div className="space-y-6">
@@ -83,12 +147,42 @@ function AppContent() {
             <div className="grid gap-6 md:grid-cols-2">
               <div className="p-6 border rounded-lg">
                 <h3 className="font-medium mb-4">オンボーディング</h3>
-                <button
-                  onClick={resetOnboarding}
-                  className="text-primary hover:underline"
-                >
+                <button onClick={resetOnboarding} className="text-primary hover:underline">
                   チュートリアルを再表示
                 </button>
+              </div>
+              <div className="p-6 border rounded-lg">
+                <h3 className="font-medium mb-4">🌐 言語 / Language</h3>
+                <button
+                  onClick={handleToggleLang}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
+                >
+                  {lang === 'ja' ? 'Switch to English' : '日本語に切替'}
+                </button>
+              </div>
+              <div className="p-6 border rounded-lg">
+                <h3 className="font-medium mb-4">🔔 ブラウザ通知</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  株価アラートが発動した際にブラウザ通知を受け取れます
+                </p>
+                <button onClick={enableNotifications} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm">
+                  通知を有効にする
+                </button>
+              </div>
+              <div className="p-6 border rounded-lg">
+                <h3 className="font-medium mb-4">📂 CSVインポート</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  証券会社のCSVから保有銘柄を一括インポート
+                </p>
+                <div className="flex gap-2">
+                  <label className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm cursor-pointer">
+                    CSVを選択
+                    <input type="file" accept=".csv,.tsv,.txt" onChange={handleCSVImport} className="hidden" />
+                  </label>
+                  <button onClick={downloadSampleCSV} className="px-4 py-2 border rounded-md text-sm hover:bg-muted">
+                    サンプルCSV
+                  </button>
+                </div>
               </div>
               <div className="p-6 border rounded-lg">
                 <TermList />
@@ -96,8 +190,7 @@ function AppContent() {
             </div>
           </div>
         );
-      default:
-        return <Dashboard />;
+      default: return <Dashboard />;
     }
   };
 

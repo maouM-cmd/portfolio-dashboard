@@ -35,6 +35,8 @@ const Layout = ({ children, activeTab, setActiveTab, alertCount = 0 }) => {
         { id: 'transactions', icon: History, label: '取引履歴' },
         { id: 'dividends', icon: Calendar, label: '配当カレンダー' },
         { id: 'goals', icon: Target, label: '投資目標' },
+        { id: 'sectors', icon: PieChart, label: 'セクター分析' },
+        { id: 'tax', icon: HelpCircle, label: '税金計算' },
         { id: 'news', icon: Newspaper, label: 'ニュース' },
         { id: 'comparison', icon: BarChart3, label: '比較分析' },
         { id: 'settings', icon: Settings, label: '設定' },
